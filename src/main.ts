@@ -22,5 +22,6 @@ const pinia = createPinia()
 pinia.use(piniaPluginPersistedstate)
 app.use(pinia)
 
+console.log(import.meta.env)
 
 app.mount('#app')

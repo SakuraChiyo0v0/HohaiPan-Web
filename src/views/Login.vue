@@ -3,6 +3,7 @@
     <div class="login-panel">
       <el-form ref="formData" :model="formData" class="form">
         <div class="title">Hohai云盘</div>
+        <!--          --------------登陆部分 -->
         <el-form-item prop="email">
           <el-input
               placeholder="请输入邮箱"

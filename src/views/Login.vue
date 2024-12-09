@@ -1,23 +1,23 @@
 <template>
   <div class="body">
     <div class="login-panel">
-      <el-form ref="formData" :model="formData" class="form">
+      <el-form ref="loginFormRef" :model="loginForm" class="form">
         <div class="title">Hohai云盘</div>
         <!--          --------------登陆部分 -->
         <el-form-item prop="email">
           <el-input
               placeholder="请输入邮箱"
-              v-model.trim="formData.email"
+              v-model.trim="loginForm.email"
               maxLength="150"
               prefix-icon="Message"
               clearable
           >
           </el-input>
         </el-form-item>
-        <el-form-item prop="password">
+        <el-form-item prop="password" v-show="onType === LoginShowEnum.LOGIN">
           <el-input
               placeholder="请输入密码"
-              v-model.trim="formData.password"
+              v-model.trim="loginForm.password"
               type="password"
               maxLength="20"
               prefix-icon="Lock"
@@ -26,34 +26,263 @@
           >
           </el-input>
         </el-form-item>
+        <el-form-item prop="checkCode" v-show="onType === LoginShowEnum.LOGIN">
+          <div class="check-code-panel">
+            <el-input
+                placeholder="请输入验证码"
+                v-model.trim="loginForm.checkCode"
+                prefix-icon="EditPen"
+                maxlength="5"
+            />
+            <img :src="checkCodeUrl" class="check-code" @click="changeCheckCode()" alt="验证码"/>
+          </div>
+        </el-form-item>
+        <el-form-item prop="emailCode" v-show="[2, 3, 4].includes(onType)">
+          <div class="send-email-panel">
+            <el-input
+                placeholder="请输入邮箱验证码"
+                v-model.trim="loginForm.emailCode"
+                prefix-icon="EditPen"
+            />
+            <el-button class="send-mail-btn" type="primary" @click="getEmailCode">
+              获取邮箱验证码
+            </el-button>
+          </div>
+          <el-popover placement="bottom" :width="500" trigger="click">
+            <div>
+              <p>1、在垃圾箱中查找邮箱验证码</p>
+              <p>2、在邮箱中头像->设置->反垃圾->白名单->设置邮箱地址白名单</p>
+              <p>3、将邮箱【3296299414@qq.com】添加到白名单</p>
+            </div>
+            <template #reference>
+              <el-link type="primary" :underline="false">未收到邮箱验证码？</el-link>
+            </template>
+          </el-popover>
+        </el-form-item>
+        <!--          --------------组件部分 -->
+        <!-- 登录 -->
+        <el-form-item v-if="onType === LoginShowEnum.LOGIN">
+          <div class="remember-me-panel">
+            <el-checkbox label="记住我"/>
+          </div>
+          <div class="jump">
+            <el-link type="primary" :underline="false" @click="showPanel(LoginShowEnum.RESET_PASSWORD)">忘记密码？
+            </el-link>
+            <el-link type="primary" :underline="false" @click="showPanel(LoginShowEnum.EMAIL_LOGIN)">邮箱验证码登录
+            </el-link>
+            <el-link type="primary" :underline="false" @click="showPanel(LoginShowEnum.REGISTER)">没有账号？</el-link>
+          </div>
+        </el-form-item>
+        <!-- 注册 -->
+        <el-form-item v-if="onType === LoginShowEnum.REGISTER">
+          <div class="jump">
+            <el-link type="primary" :underline="false" @click="showPanel(LoginShowEnum.LOGIN)">已有账号？</el-link>
+          </div>
+        </el-form-item>
+        <!-- 找回密码 -->
+        <el-form-item v-if="onType === LoginShowEnum.RESET_PASSWORD">
+          <div class="jump">
+            <el-link type="primary" :underline="false" @click="showPanel(LoginShowEnum.LOGIN)"><= 去登陆</el-link>
+          </div>
+        </el-form-item>
+        <!-- 邮箱验证码登录 -->
+        <el-form-item v-if="onType === LoginShowEnum.EMAIL_LOGIN">
+          <div class="jump">
+            <el-link type="primary" :underline="false" @click="showPanel(LoginShowEnum.LOGIN)"><= 账密登录</el-link>
+          </div>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" style="width: 100%" @click="doSubmit">
-            <span v-if="onType === 0">登陆</span>
-            <span v-if="onType === 1">注册</span>
-            <span v-if="onType === 2">重置密码</span>
+            <span v-if="onType === LoginShowEnum.LOGIN||onType === LoginShowEnum.EMAIL_LOGIN">登陆</span>
+            <span v-if="onType === LoginShowEnum.REGISTER">注册</span>
+            <span v-if="onType === LoginShowEnum.RESET_PASSWORD">重置密码</span>
+          </el-button>
+          <el-button type="primary" @click="test()" class="dialog-button" plain round>
+            test
           </el-button>
         </el-form-item>
       </el-form>
     </div>
+    <!--    发送邮箱的窗口-->
+    <el-dialog
+        v-model="showEmailDialog"
+        title="获取邮箱验证码"
+        width="400"
+    >
+      <el-form
+          :model="emailCodeForm"
+          label-width="80px"
+          ref="emailCodeFormRef"
+      >
+        <el-form-item label="邮箱">
+          {{ loginForm.email }}
+        </el-form-item>
+        <el-form-item label="验证码" prop="checkCode">
+          <div class="check-code-panel">
+            <el-input
+                placeholder="请输入验证码"
+                v-model.trim="emailCodeForm.checkCode"
+                prefix-icon="EditPan"
+                maxlength="5"
+            />
+            <img :src="checkCodeUrl" class="check-code" @click="changeCheckCode()" alt=""/>
+          </div>
+          <div class="dialog-footer">
+            <el-button type="primary" @click="sendMailCode(onType)" class="dialog-button" plain round>
+              确认
+            </el-button>
+          </div>
+        </el-form-item>
+      </el-form>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import {ref, reactive} from "vue";
-import {userLoginService} from "@/api/UserApi.ts";
+import {reactive, ref} from "vue";
+import Verify from "@/utils/Verify.ts"
+import qs from "qs";
+import {API, userLoginService, userSendEmailCodeService} from "@/api/UserApi.ts";
+import type {LoginForm} from "@/type/User/LoginForm.ts";
+import {type EmailCodeForm} from "@/type/User/EmailCodeForm.ts"
+import {LoginShowEnum} from "@/enums/login/loginShowEnum.ts";
+import {EmailCodeType} from "@/enums/login/EmailCodeType.ts";
 
-const formData = reactive({
+const loginFormRef = ref()
+const loginForm: LoginForm = reactive({
   email: '',
-  password: ''
+  password: '',
+  checkCode: '',
+  emailCode: ''
+})
+const reSetForm = () => {
+  changeCheckCode()
+  loginFormRef.value.resetFields()
+}
+const reSetCode =()=>{
+  loginFormRef.value.resetFields("checkCode")
+  loginFormRef.value.resetFields("emailCode")
+}
+//校验
+const checkRePassword = (rule: any, value: string, callback: any) => {
+  if (loginForm.password !== value) {
+    return callback(new Error('两次密码不一致'))
+  }
+  return callback()
+}
+const formRules = reactive({
+  email: [
+    {required: true, message: '请输入邮箱', trigger: 'blur'},
+    {validator: Verify.email, message: '请输入正确的邮箱', trigger: 'blur'}
+  ],
+  password: [
+    {required: true, message: '请输入密码', trigger: 'blur'},
+    {validator: Verify.password, message: '密码只能是数字, 字母, 特殊字符6-18位', trigger: 'blur'}
+  ],
+  nickname: [{required: true, message: '请输入昵称', trigger: 'blur'}],
+  reRegisterPassword: [
+    {required: true, message: '请再次输入密码', trigger: 'blur'},
+    {validator: checkRePassword, message: '两次密码不一致', trigger: 'blur'}
+  ],
+  checkCode: [{required: true, message: '请输入图片验证码'}],
+  emailCode: [{required: true, message: '请输入邮箱验证码'}]
 })
 
-//当前显示的类型 0:登陆 1:注册 2:重置密码
-const onType = ref(0)
+//当前显示的类型 1:登陆 2:注册 3:重置密码 4:邮箱验证码登录
+const onType = ref(LoginShowEnum.LOGIN)
+const showPanel = (type: number) => {
+  onType.value = type
+  reSetForm()
+}
 
 //提交按钮逻辑
 const doSubmit = () => {
-  console.log(onType.value)
-  userLoginService(formData)
+  loginFormRef.value.validate(async (valid: boolean) => {
+    if (!valid) {
+      return
+    }
+    try{
+      switch (onType.value){
+        case LoginShowEnum.LOGIN:
+          await userLoginService(loginForm)
+          changeCheckCode()
+          break
+        case LoginShowEnum.REGISTER:
+          break
+        case LoginShowEnum.RESET_PASSWORD:
+          break
+        case LoginShowEnum.EMAIL_LOGIN:
+          break
+        default:
+          ElNotification({
+            title: "ERROR",
+            message: "逻辑错误 请勿修改客户端!!",
+            type: 'error'
+          })
+          break
+      }
+    }finally {
+      reSetCode()
+    }
+  })
+}
+
+//验证码部分
+const checkCodeUrl = ref(API.CHECK_CODE_URL)
+const changeCheckCode = () => {
+  const params = {
+    type: onType.value,
+    timestamp: new Date().getTime()
+  }
+  checkCodeUrl.value = API.CHECK_CODE_URL + '?' + qs.stringify(params)
+}
+//邮箱验证码部分
+const showEmailDialog = ref(false)
+const emailCodeFormRef = ref()
+const emailCodeForm: EmailCodeForm = reactive({
+  email: '',
+  checkCode: '',
+  emailCodeType: EmailCodeType.REGISTER,
+})
+const getEmailCode = () => {
+  //validateField	验证具体的某个字段。
+  loginFormRef.value.validateField('email', (valid: boolean) => {
+    if (!valid) {
+      return
+    }
+    emailCodeForm.email = loginForm.email
+    showEmailDialog.value = true
+  })
+}
+const sendMailCode = (type: number) => {
+  emailCodeFormRef.value.validate(async (valid: boolean) => {
+    if (!valid) {
+      return
+    }
+    emailCodeForm.emailCodeType = type
+    try {
+      await userSendEmailCodeService(emailCodeForm)
+      ElNotification({
+        title: "发送成功",
+        message: "验证码已发送到您的邮箱 请注意查收!",
+        type: 'success'
+      })
+      showEmailDialog.value = false
+    } catch (error) {
+      //出错了重新尝试
+      changeCheckCode()
+      emailCodeFormRef.value.resetFields()
+    }
+  })
+}
+
+
+const test= ()=>{
+  ElNotification({
+    title: "❤❤❤❤❤❤❤❤❤❤",
+    message: "❤❤❤❤❤❤❤❤❤❤",
+    type: 'success'
+  })
 }
 </script>
 
@@ -64,7 +293,7 @@ const doSubmit = () => {
   justify-content: right;
   background-size: cover;
   background-repeat: no-repeat;
-  background-image: url('public/login_bg.png');
+  background-image: url('/login_bg.png');
 
   .login-panel {
     width: 360px;
@@ -81,6 +310,41 @@ const doSubmit = () => {
         font-size: 18px;
         font-weight: bold;
         margin-bottom: 20px;
+      }
+
+      .jump {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      img {
+        height: 24px;
+        margin-left: 10px;
+      }
+
+      .send-email-panel {
+        display: flex;
+        width: 100%;
+        justify-content: space-between;
+
+        .send-mail-btn {
+          margin-left: 5px;
+        }
+      }
+
+      .remember-me-panel {
+      }
+
+      .check-code-panel {
+        width: 100%;
+        display: flex;
+
+        .check-code {
+          margin-left: 5px;
+          cursor: pointer;
+          height: 30px;
+        }
       }
     }
   }

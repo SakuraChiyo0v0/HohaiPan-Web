@@ -1,5 +1,4 @@
 import axios from "axios";
-import {ElMessage} from "element-plus";
 
 let request =axios.create({
     baseURL: import.meta.env.VITE_APP_BASE_API,
@@ -11,9 +10,22 @@ request.interceptors.request.use((config)=>{
 })
 
 request.interceptors.response.use((response)=>{
-    return response.data
+    let data = response.data
+    console.log(data)
+    if(data.code != 1){
+        let message = data.msg || '请求失败'
+        console.error(message)
+        ElNotification({
+            title: 'ERROR',
+            message: message,
+            type: 'error'
+        })
+        return Promise.reject(new Error(message))
+    }
+    return data
 },(error)=>{
-    let message = ''
+    console.log(error)
+    let message
     let status = error.response.status
     switch (status){
         case 401:
@@ -26,7 +38,8 @@ request.interceptors.response.use((response)=>{
             message = '网络异常'
             break
     }
-    ElMessage({
+    ElNotification({
+        title: 'ERROR',
         message: message,
         type: 'error'
     })

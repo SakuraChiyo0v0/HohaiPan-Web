@@ -14,7 +14,7 @@ export interface IUserRegisterDTO{
     nickname: string
     password:string,
     rePassword:string,
-    checkCode:string
+    emailCode:string
 }
 
 export interface IUserResetPasswordDTO{

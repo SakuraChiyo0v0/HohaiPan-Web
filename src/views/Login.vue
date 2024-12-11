@@ -14,8 +14,19 @@
           >
           </el-input>
         </el-form-item>
+        <el-form-item prop="nickname" v-show="onType === LoginShowEnum.REGISTER">
+          <el-input
+              placeholder="请输入用户名"
+              v-model.trim="formData.nickname"
+              maxLength="150"
+              prefix-icon="Message"
+              clearable
+          >
+          </el-input>
+        </el-form-item>
         <!-- 密码部分-->
-        <el-form-item prop="password" v-show="[LoginShowEnum.LOGIN,LoginShowEnum.REGISTER, LoginShowEnum.RESET_PASSWORD].includes(onType)">
+        <el-form-item prop="password"
+                      v-show="[LoginShowEnum.LOGIN,LoginShowEnum.REGISTER, LoginShowEnum.RESET_PASSWORD].includes(onType)">
           <el-input
               :placeholder="passwordPlaceholder"
               v-model.trim="formData.password"
@@ -157,18 +168,31 @@
 </template>
 
 <script setup lang="ts">
-import {reactive, ref} from "vue";
+import {reactive, ref, nextTick} from "vue";
 import Verify from "@/utils/Verify.ts"
 import qs from "qs";
-import {API, userLoginService, userSendEmailCodeService} from "@/api/UserApi.ts";
+import {
+  API, userEmailLoginService,
+  userLoginService,
+  userRegisterService,
+  userResetPasswordService,
+  userSendEmailCodeService
+} from "@/api/UserApi.ts";
 import type {FormData} from "@/type/User/FormData.ts";
 import {type EmailCodeForm} from "@/type/User/EmailCodeForm.ts"
 import {LoginShowEnum} from "@/enums/login/loginShowEnum.ts";
 import {EmailCodeType} from "@/enums/login/EmailCodeType.ts";
+import type {
+  IUserEmailLoginDTO,
+  IUserLoginDTO,
+  IUserRegisterDTO,
+  IUserResetPasswordDTO
+} from "@/type/User/ServiceDTO.ts";
 
 const loginFormRef = ref()
 const formData: FormData = reactive({
   email: '',
+  nickname: '',
   password: '',
   checkCode: '',
   emailCode: '',
@@ -178,7 +202,7 @@ const reSetForm = () => {
   changeCheckCode()
   loginFormRef.value.resetFields()
 }
-const reSetCode =()=>{
+const reSetCode = () => {
   loginFormRef.value.resetFields("checkCode")
   loginFormRef.value.resetFields("emailCode")
 }
@@ -210,13 +234,13 @@ const formRules = reactive({
   emailCode: [{required: true, message: '请输入邮箱验证码'}]
 })
 
-//当前显示的类型 1:登陆 2:注册 3:重置密码 4:邮箱验证码登录
+//当前显示的类型 0:登陆 1:注册 2:重置密码 3:邮箱验证码登录
 const onType = ref(LoginShowEnum.LOGIN)
 const showPanel = (type: number) => {
   onType.value = type
-  if(type === LoginShowEnum.RESET_PASSWORD){
+  if (type === LoginShowEnum.RESET_PASSWORD) {
     passwordPlaceholder.value = '请输入新的密码'
-  }else {
+  } else {
     passwordPlaceholder.value = '请输入密码'
   }
   reSetForm()
@@ -228,19 +252,32 @@ const doSubmit = () => {
     if (!valid) {
       //return
     }
-    try{
-      switch (onType.value){
+    const {email, nickname, password, rePassword, checkCode, emailCode} = formData;
+    try {
+      let data: any
+      let msg: string = ''
+      switch (onType.value) {
         case LoginShowEnum.LOGIN:
-          await LoginService()
+          data = {email, password, checkCode} as IUserLoginDTO
+          await userLoginService(data);
+          msg = "登陆成功!"
           break
         case LoginShowEnum.REGISTER:
-          RegisterService()
+          data = {email, nickname, password, rePassword, emailCode} as IUserRegisterDTO
+          await userRegisterService(data);
+          msg = "注册成功! 请进行登录";
+          showPanel(LoginShowEnum.LOGIN)
           break
         case LoginShowEnum.RESET_PASSWORD:
-          ResetPasswordService()
+          data = {email, password, rePassword, checkCode, emailCode} as IUserResetPasswordDTO
+          await userResetPasswordService(data);
+          msg = "重置密码成功! 请进行登录";
+          showPanel(LoginShowEnum.LOGIN)
           break
         case LoginShowEnum.EMAIL_LOGIN:
-          EmailLoginService()
+          data = {email, emailCode} as IUserEmailLoginDTO
+          await userEmailLoginService(data);
+          msg = "邮箱登录成功!"
           break
         default:
           ElNotification({
@@ -250,26 +287,19 @@ const doSubmit = () => {
           })
           break
       }
-    }finally {
+      ElNotification({
+        title: 'Success',
+        message: msg,
+        type: 'success'
+      })
+    } catch (e) {
+      if (onType.value === LoginShowEnum.LOGIN) {
+        changeCheckCode()
+      }
+    } finally {
       reSetCode()
     }
   })
-}
-
-//具体接口逻辑
-const LoginService=async () => {
-  console.log("登录接口调用")
-  await userLoginService(formData)
-  changeCheckCode()
-}
-const RegisterService=()=>{
-  console.log("注册接口调用")
-}
-const ResetPasswordService=()=>{
-  console.log("重置密码接口调用")
-}
-const EmailLoginService=()=>{
-  console.log("邮箱登录接口调用")
 }
 
 //验证码部分
@@ -322,7 +352,7 @@ const sendMailCode = (type: number) => {
 }
 
 
-const test= ()=>{
+const test = () => {
   ElNotification({
     title: "❤❤❤❤❤❤❤❤❤❤",
     message: "❤❤❤❤❤❤❤❤❤❤",

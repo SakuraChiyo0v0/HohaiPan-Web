@@ -1,5 +1,5 @@
 import Request from "@/utils/request.ts";
-import type {LoginForm} from "@/type/User/LoginForm.ts";
+import type {FormData} from "@/type/User/FormData.ts";
 import type {EmailCodeForm} from "@/type/User/EmailCodeForm.ts";
 import qs from "qs";
 
@@ -9,7 +9,7 @@ export const API = {
     CHECK_CODE_URL: '/api/checkCode'
 }
 
-export const userLoginService=(data:LoginForm):any=>{
+export const userLoginService=(data:FormData):any=>{
     return Request.post(API.LOGIN_URL,data)
 }
 

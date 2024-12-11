@@ -1,23 +1,24 @@
 <template>
   <div class="body">
     <div class="login-panel">
-      <el-form ref="loginFormRef" :model="loginForm" class="form">
+      <el-form ref="loginFormRef" :model="formData" :rules="formRules" class="form">
         <div class="title">Hohai云盘</div>
         <!--          --------------登陆部分 -->
         <el-form-item prop="email">
           <el-input
               placeholder="请输入邮箱"
-              v-model.trim="loginForm.email"
+              v-model.trim="formData.email"
               maxLength="150"
               prefix-icon="Message"
               clearable
           >
           </el-input>
         </el-form-item>
-        <el-form-item prop="password" v-show="onType === LoginShowEnum.LOGIN">
+        <!-- 密码部分-->
+        <el-form-item prop="password" v-show="[LoginShowEnum.LOGIN,LoginShowEnum.REGISTER, LoginShowEnum.RESET_PASSWORD].includes(onType)">
           <el-input
-              placeholder="请输入密码"
-              v-model.trim="loginForm.password"
+              :placeholder="passwordPlaceholder"
+              v-model.trim="formData.password"
               type="password"
               maxLength="20"
               prefix-icon="Lock"
@@ -26,22 +27,35 @@
           >
           </el-input>
         </el-form-item>
+        <el-form-item v-show="[LoginShowEnum.REGISTER, LoginShowEnum.RESET_PASSWORD].includes(onType)">
+          <el-input
+              placeholder="请再次输入密码"
+              v-model.trim="formData.rePassword"
+              type="password"
+              maxLength="20"
+              prefix-icon="Lock"
+              clearable
+              show-password
+          >
+          </el-input>
+        </el-form-item>
+        <!--验证码部分-->
         <el-form-item prop="checkCode" v-show="onType === LoginShowEnum.LOGIN">
           <div class="check-code-panel">
             <el-input
                 placeholder="请输入验证码"
-                v-model.trim="loginForm.checkCode"
+                v-model.trim="formData.checkCode"
                 prefix-icon="EditPen"
                 maxlength="5"
             />
             <img :src="checkCodeUrl" class="check-code" @click="changeCheckCode()" alt="验证码"/>
           </div>
         </el-form-item>
-        <el-form-item prop="emailCode" v-show="[2, 3, 4].includes(onType)">
+        <el-form-item prop="emailCode" v-show="[1, 2, 3, 4].includes(onType)">
           <div class="send-email-panel">
             <el-input
                 placeholder="请输入邮箱验证码"
-                v-model.trim="loginForm.emailCode"
+                v-model.trim="formData.emailCode"
                 prefix-icon="EditPen"
             />
             <el-button class="send-mail-btn" type="primary" @click="getEmailCode">
@@ -60,7 +74,7 @@
           </el-popover>
         </el-form-item>
         <!--          --------------组件部分 -->
-        <!-- 登录 -->
+        <!-- 登录跳转 -->
         <el-form-item v-if="onType === LoginShowEnum.LOGIN">
           <div class="remember-me-panel">
             <el-checkbox label="记住我"/>
@@ -73,33 +87,36 @@
             <el-link type="primary" :underline="false" @click="showPanel(LoginShowEnum.REGISTER)">没有账号？</el-link>
           </div>
         </el-form-item>
-        <!-- 注册 -->
+        <!-- 注册跳转 -->
         <el-form-item v-if="onType === LoginShowEnum.REGISTER">
           <div class="jump">
             <el-link type="primary" :underline="false" @click="showPanel(LoginShowEnum.LOGIN)">已有账号？</el-link>
           </div>
         </el-form-item>
-        <!-- 找回密码 -->
+        <!-- 找回密码跳转 -->
         <el-form-item v-if="onType === LoginShowEnum.RESET_PASSWORD">
           <div class="jump">
             <el-link type="primary" :underline="false" @click="showPanel(LoginShowEnum.LOGIN)"><= 去登陆</el-link>
           </div>
         </el-form-item>
-        <!-- 邮箱验证码登录 -->
+        <!-- 邮箱验证码登录跳转 -->
         <el-form-item v-if="onType === LoginShowEnum.EMAIL_LOGIN">
           <div class="jump">
             <el-link type="primary" :underline="false" @click="showPanel(LoginShowEnum.LOGIN)"><= 账密登录</el-link>
           </div>
         </el-form-item>
+        <!--提交按钮-->
         <el-form-item>
           <el-button type="primary" style="width: 100%" @click="doSubmit">
             <span v-if="onType === LoginShowEnum.LOGIN||onType === LoginShowEnum.EMAIL_LOGIN">登陆</span>
             <span v-if="onType === LoginShowEnum.REGISTER">注册</span>
             <span v-if="onType === LoginShowEnum.RESET_PASSWORD">重置密码</span>
           </el-button>
-          <el-button type="primary" @click="test()" class="dialog-button" plain round>
-            test
-          </el-button>
+          <div>
+            <el-button type="primary" @click="test()" class="dialog-button" plain round>
+              test
+            </el-button>
+          </div>
         </el-form-item>
       </el-form>
     </div>
@@ -113,9 +130,10 @@
           :model="emailCodeForm"
           label-width="80px"
           ref="emailCodeFormRef"
+          :rules="formRules"
       >
         <el-form-item label="邮箱">
-          {{ loginForm.email }}
+          {{ formData.email }}
         </el-form-item>
         <el-form-item label="验证码" prop="checkCode">
           <div class="check-code-panel">
@@ -143,17 +161,18 @@ import {reactive, ref} from "vue";
 import Verify from "@/utils/Verify.ts"
 import qs from "qs";
 import {API, userLoginService, userSendEmailCodeService} from "@/api/UserApi.ts";
-import type {LoginForm} from "@/type/User/LoginForm.ts";
+import type {FormData} from "@/type/User/FormData.ts";
 import {type EmailCodeForm} from "@/type/User/EmailCodeForm.ts"
 import {LoginShowEnum} from "@/enums/login/loginShowEnum.ts";
 import {EmailCodeType} from "@/enums/login/EmailCodeType.ts";
 
 const loginFormRef = ref()
-const loginForm: LoginForm = reactive({
+const formData: FormData = reactive({
   email: '',
   password: '',
   checkCode: '',
-  emailCode: ''
+  emailCode: '',
+  rePassword: ''
 })
 const reSetForm = () => {
   changeCheckCode()
@@ -163,9 +182,12 @@ const reSetCode =()=>{
   loginFormRef.value.resetFields("checkCode")
   loginFormRef.value.resetFields("emailCode")
 }
+
+//密码placeholder动态
+const passwordPlaceholder = ref("请输入密码")
 //校验
 const checkRePassword = (rule: any, value: string, callback: any) => {
-  if (loginForm.password !== value) {
+  if (formData.password !== value) {
     return callback(new Error('两次密码不一致'))
   }
   return callback()
@@ -180,7 +202,7 @@ const formRules = reactive({
     {validator: Verify.password, message: '密码只能是数字, 字母, 特殊字符6-18位', trigger: 'blur'}
   ],
   nickname: [{required: true, message: '请输入昵称', trigger: 'blur'}],
-  reRegisterPassword: [
+  rePassword: [
     {required: true, message: '请再次输入密码', trigger: 'blur'},
     {validator: checkRePassword, message: '两次密码不一致', trigger: 'blur'}
   ],
@@ -192,6 +214,11 @@ const formRules = reactive({
 const onType = ref(LoginShowEnum.LOGIN)
 const showPanel = (type: number) => {
   onType.value = type
+  if(type === LoginShowEnum.RESET_PASSWORD){
+    passwordPlaceholder.value = '请输入新的密码'
+  }else {
+    passwordPlaceholder.value = '请输入密码'
+  }
   reSetForm()
 }
 
@@ -199,19 +226,21 @@ const showPanel = (type: number) => {
 const doSubmit = () => {
   loginFormRef.value.validate(async (valid: boolean) => {
     if (!valid) {
-      return
+      //return
     }
     try{
       switch (onType.value){
         case LoginShowEnum.LOGIN:
-          await userLoginService(loginForm)
-          changeCheckCode()
+          await LoginService()
           break
         case LoginShowEnum.REGISTER:
+          RegisterService()
           break
         case LoginShowEnum.RESET_PASSWORD:
+          ResetPasswordService()
           break
         case LoginShowEnum.EMAIL_LOGIN:
+          EmailLoginService()
           break
         default:
           ElNotification({
@@ -225,6 +254,22 @@ const doSubmit = () => {
       reSetCode()
     }
   })
+}
+
+//具体接口逻辑
+const LoginService=async () => {
+  console.log("登录接口调用")
+  await userLoginService(formData)
+  changeCheckCode()
+}
+const RegisterService=()=>{
+  console.log("注册接口调用")
+}
+const ResetPasswordService=()=>{
+  console.log("重置密码接口调用")
+}
+const EmailLoginService=()=>{
+  console.log("邮箱登录接口调用")
 }
 
 //验证码部分
@@ -250,7 +295,7 @@ const getEmailCode = () => {
     if (!valid) {
       return
     }
-    emailCodeForm.email = loginForm.email
+    emailCodeForm.email = formData.email
     showEmailDialog.value = true
   })
 }

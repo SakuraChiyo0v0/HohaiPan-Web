@@ -225,7 +225,10 @@ const formRules = reactive({
     {required: true, message: '请输入密码', trigger: 'blur'},
     {validator: Verify.password, message: '密码只能是数字, 字母, 特殊字符6-18位', trigger: 'blur'}
   ],
-  nickname: [{required: true, message: '请输入昵称', trigger: 'blur'}],
+  nickname: [
+      {required: true, message: '请输入昵称', trigger: 'blur'},
+      {validator: Verify.nickname, message: '昵称只能是数字, 字母, 中文和._-符号6-18位', trigger: 'blur'}
+  ],
   rePassword: [
     {required: true, message: '请再次输入密码', trigger: 'blur'},
     {validator: checkRePassword, message: '两次密码不一致', trigger: 'blur'}
@@ -263,7 +266,7 @@ const doSubmit = () => {
           msg = "登陆成功!"
           break
         case LoginShowEnum.REGISTER:
-          data = {email, nickname, password, rePassword, emailCode} as IUserRegisterDTO
+          data = {email, nickname, password, emailCode} as IUserRegisterDTO
           await userRegisterService(data);
           msg = "注册成功! 请进行登录";
           showPanel(LoginShowEnum.LOGIN)
@@ -350,7 +353,6 @@ const sendMailCode = (type: number) => {
     }
   })
 }
-
 
 const test = () => {
   ElNotification({

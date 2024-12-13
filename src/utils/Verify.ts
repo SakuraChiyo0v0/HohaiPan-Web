@@ -1,9 +1,10 @@
 // 定义正则表达式的类型
 const regs: { [key: string]: RegExp } = {
-  email: /^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/,
-  number: /^([0]|[1-9][0-9]*)$/, // 修正了正则表达式中的错误
-  password: /^(?=.*\d)(?=.*[a-zA-Z])[\da-zA-Z~!@#$%^&*._]{6,18}$/,
-  shareCode: /^[A-Za-z0-9]+$/, // 修正了正则表达式中的错误
+  email: /^[A-Za-z0-9\u4e00-\u9fa5]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/,
+  nickname: /^[\u4e00-\u9fa5A-Za-z0-9._-]{2,16}$/,
+  number: /^(0|[1-9][0-9]*)$/,
+  password: /^\w{6,18}$/,
+  shareCode: /^[A-Za-z0-9]+$/,
   fileName: /^[a-zA-Z0-9_.-]{1,255}(?<!\.)$/
 };
 
@@ -29,6 +30,7 @@ const verify: VerifyFunction = (rule, value, reg, callback) => {
 // 定义导出对象的类型
 interface Validators {
   email: (rule: Rule, value: string, callback: (error?: Error) => void) => void;
+  nickname: (rule: Rule, value: string, callback: (error?: Error) => void) => void;
   number: (rule: Rule, value: string, callback: (error?: Error) => void) => void;
   password: (rule: Rule, value: string, callback: (error?: Error) => void) => void;
   shareCode: (rule: Rule, value: string, callback: (error?: Error) => void) => void;
@@ -41,6 +43,9 @@ const validators: Validators = {
   },
   number: (rule, value, callback) => {
     return verify(rule, value, regs.number, callback);
+  },
+  nickname: (rule, value, callback) => {
+    return verify(rule, value, regs.nickname, callback);
   },
   password: (rule, value, callback) => {
     return verify(rule, value, regs.password, callback);

@@ -13,7 +13,6 @@ export interface IUserRegisterDTO{
     email:string,
     nickname: string
     password:string,
-    rePassword:string,
     emailCode:string
 }
 

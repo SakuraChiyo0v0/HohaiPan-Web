@@ -1,17 +1,21 @@
 import axios from "axios";
-
+import {useTokenStore} from "@/store/TokenStore.ts";
+import Router from "@/router";
 let request =axios.create({
     baseURL: import.meta.env.VITE_APP_BASE_API,
     timeout: 5000
 })
 
 request.interceptors.request.use((config)=>{
+    if(useTokenStore().token){
+        console.log("分配了token:"+useTokenStore().token)
+        config.headers["Authorization"] = useTokenStore().token; // 请求头携带 token
+    }
     return config
 })
 
 request.interceptors.response.use((response)=>{
     let data = response.data
-    console.log(data)
     if(data.code != 1){
         let message = data.msg || '请求失败'
         console.error(message)
@@ -43,6 +47,10 @@ request.interceptors.response.use((response)=>{
         message: message,
         type: 'error'
     })
+    if (status === 401) {
+        useTokenStore().removeToken()
+        Router.push('/login')
+    }
     return Promise.reject(error)
 })
 

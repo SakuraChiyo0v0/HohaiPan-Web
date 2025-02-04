@@ -1,0 +1,3 @@
+@use "@/assets/variable.scss" as *; // 引入变量，使用 * 让变量无需命名空间
+@use "@/assets/reset";
+@use "@/assets/base";

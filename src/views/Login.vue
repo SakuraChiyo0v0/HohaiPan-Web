@@ -172,7 +172,7 @@ import {reactive, ref, nextTick} from "vue";
 import Verify from "@/utils/Verify.ts"
 import qs from "qs";
 import {
-  API, userEmailLoginService,
+  API, userEmailLoginService, userGetInfoService,
   userLoginService,
   userRegisterService,
   userResetPasswordService,
@@ -188,14 +188,18 @@ import type {
   IUserRegisterDTO,
   IUserResetPasswordDTO
 } from "@/type/User/ServiceDTO.ts";
+import Router from "@/router";
+import {useTokenStore} from "@/store/TokenStore.ts";
+import type {Result} from "@/type/Result.ts";
+import {useUserInfoStore} from "@/store/UserInfoStore.ts";
 
 const loginFormRef = ref()
 const formData: FormData = reactive({
-  email: '',
+  email: '3296299414@qq.com',
   nickname: '',
-  password: '',
-  checkCode: '',
-  emailCode: '',
+  password: 'root1234',
+  checkCode: 'HHUNB',
+  emailCode: 'HHUNB',
   rePassword: ''
 })
 const reSetForm = () => {
@@ -203,8 +207,12 @@ const reSetForm = () => {
   loginFormRef.value.resetFields()
 }
 const reSetCode = () => {
-  loginFormRef.value.resetFields("checkCode")
-  loginFormRef.value.resetFields("emailCode")
+  if(formData.checkCode){
+    loginFormRef.value.resetFields("checkCode")
+  }
+  if(formData.emailCode){
+    loginFormRef.value.resetFields("emailCode")
+  }
 }
 
 //密码placeholder动态
@@ -248,39 +256,45 @@ const showPanel = (type: number) => {
   }
   reSetForm()
 }
-
+const tokenStore = useTokenStore()
+const userInfoStore = useUserInfoStore()
 //提交按钮逻辑
 const doSubmit = () => {
   loginFormRef.value.validate(async (valid: boolean) => {
     if (!valid) {
       //return
     }
-    const {email, nickname, password, rePassword, checkCode, emailCode} = formData;
+    const {email, nickname, password, checkCode, emailCode} = formData;
     try {
       let data: any
       let msg: string = ''
+      let res:Result
+      let token: string =''
       switch (onType.value) {
         case LoginShowEnum.LOGIN:
           data = {email, password, checkCode} as IUserLoginDTO
-          await userLoginService(data);
+          res = await userLoginService(data);
           msg = "登陆成功!"
+          console.log(res.data);
+          token = res.data
           break
         case LoginShowEnum.REGISTER:
           data = {email, nickname, password, emailCode} as IUserRegisterDTO
           await userRegisterService(data);
           msg = "注册成功! 请进行登录";
-          showPanel(LoginShowEnum.LOGIN)
           break
         case LoginShowEnum.RESET_PASSWORD:
-          data = {email, password, rePassword, checkCode, emailCode} as IUserResetPasswordDTO
+          data = {email, password, emailCode} as IUserResetPasswordDTO
+          data.isLogin = false
           await userResetPasswordService(data);
           msg = "重置密码成功! 请进行登录";
-          showPanel(LoginShowEnum.LOGIN)
           break
         case LoginShowEnum.EMAIL_LOGIN:
           data = {email, emailCode} as IUserEmailLoginDTO
-          await userEmailLoginService(data);
+          res = await userEmailLoginService(data);
           msg = "邮箱登录成功!"
+          console.log(res.data);
+          token = res.data
           break
         default:
           ElNotification({
@@ -295,6 +309,15 @@ const doSubmit = () => {
         message: msg,
         type: 'success'
       })
+      if(onType.value === LoginShowEnum.LOGIN || onType.value === LoginShowEnum.EMAIL_LOGIN){
+        console.log(token)
+        tokenStore.setToken(token)
+        res  = await userGetInfoService()
+        userInfoStore.setUserInfo(res.data.data)
+        await Router.push({path: '/'})
+        return
+      }
+      showPanel(LoginShowEnum.LOGIN)
     } catch (e) {
       if (onType.value === LoginShowEnum.LOGIN) {
         changeCheckCode()

@@ -8,4 +8,6 @@
       "path": "./tsconfig.app.json"
     }
   ],
+  "noImplicitAny": false,
+  "allowJs": true
 }

@@ -1,5 +1,3 @@
-import './assets/base.scss'
-
 //app
 import { createApp } from 'vue'
 import App from './App.vue'
@@ -10,6 +8,9 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component)
 }
+//icon
+import '@/assets/icon/iconfont.css'
+import '@/assets/index.scss'
 
 //router
 import router from './router'

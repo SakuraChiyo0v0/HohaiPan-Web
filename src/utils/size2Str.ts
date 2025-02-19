@@ -1,4 +1,4 @@
-export function size2Str(limit) {
+export function size2Str(limit:any) {
     let size = ''
     if (limit < 1024) {
         // 小于 1KB 转为B

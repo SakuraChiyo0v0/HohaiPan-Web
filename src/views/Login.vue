@@ -314,7 +314,7 @@ const doSubmit = () => {
         tokenStore.setToken(token)
         res  = await userGetInfoService()
         userInfoStore.setUserInfo(res.data.data)
-        await Router.push({path: '/'})
+        await Router.push({path: '/file'})
         return
       }
       showPanel(LoginShowEnum.LOGIN)

@@ -7,24 +7,37 @@
     </template>
     <el-row>
       <el-col :span="12">
+        <!-- 上传头像组件 -->
         <el-upload
             ref="uploadRef"
             class="avatar-uploader"
             :show-file-list="false"
             :auto-upload="true"
-            action="/updateUserAvatar"
-            name="file"
-            :headers="{'Authorization':userInfoStore.userInfo.token}"
-            :on-success="uploadSuccess"
+            action="/api/file/avatar/upload"
+        name="file"
+        :headers="{'Authorization': tokenStore.token}"
+        accept="image/*"
+        :on-success="uploadSuccess"
         >
-          <img v-if="imgUrl" :src="imgUrl" class="avatar"  alt=""/>
-          <img v-else :src="defaultAvatar" width="278"  alt=""/>
+        <!-- 上传成功后显示新头像，否则显示默认头像 -->
+        <img v-if="imgUrl" :src="imgUrl" class="avatar" alt="头像" />
+        <img v-else :src="defaultAvatar" class="avatar" alt="默认头像" />
         </el-upload>
         <br />
-        <el-button type="primary" :icon="Plus" size="large"  @click="uploadRef.$el.querySelector('input').click()">
+        <el-button
+            type="primary"
+            :icon="Plus"
+            size="large"
+            @click=" uploadRef.$el.querySelector('input').click()"
+        >
           选择图片
         </el-button>
-        <el-button type="success" :icon="Upload" size="large" @click="updateAvatar">
+        <el-button
+            type="success"
+            :icon="Upload"
+            size="large"
+            @click="updateAvatar"
+        >
           上传头像
         </el-button>
       </el-col>
@@ -33,36 +46,52 @@
 </template>
 
 <script lang="ts" setup>
+import {reactive, ref} from 'vue'
+import { ElMessage } from 'element-plus'
+import { Plus, Upload } from '@element-plus/icons-vue'
+import defaultAvatar from '@/assets/defaultAvatar.png'
+import { useUserInfoStore } from '@/store/UserInfoStore'
+import { useTokenStore } from '@/store/TokenStore'
+import { userUpdateAvatarService } from '@/api/UserApi'
 
-import defaultAvatar from "@/assets/defaultAvatar.png"
-import {useUserInfoStore} from "@/store/UserInfoStore.ts";
-import {ref} from "vue";
-import {ElMessage} from "element-plus";
-import {Plus, Upload} from "@element-plus/icons-vue";
+/**
+ * 获取用户信息、token等
+ */
+const userInfoStore = useUserInfoStore()
+const tokenStore = useTokenStore()
 
-const userInfoStore = useUserInfoStore();
-
+// el-upload 组件引用
 const uploadRef = ref()
-//用户头像地址
-const imgUrl= ref(userInfoStore.userInfo.avatar)
-const handleUploadFile =(file)=>{
+// 用于头像展示，初始值取自用户信息，如果没有则显示默认头像
+const imgUrl = ref(userInfoStore.userInfo?.avatar || defaultAvatar)
 
+const uploadSuccess = (result: any) => {
+  imgUrl.value = result.data
 }
 
-//图片上传成功的回调函数
-const uploadSuccess = (result)=>{
-  imgUrl.value = result.data;
-}
-
-//头像修改
-const updateAvatar = async ()=>{
-  //调用接口
-  let result = await userUpdateAvatarService(imgUrl.value);
-
-  ElMessage.success(result.msg? result.msg:'修改成功')
-
-  //修改pinia中的数据
-  userInfoStore.userInfo.avatar = imgUrl.value
+const updateAvatar = async () => {
+  try{
+    let params = {
+      userId: userInfoStore.userInfo?.userId,
+      avatarURL: imgUrl.value
+    }
+    console.log(params)
+    await userUpdateAvatarService (params)
+    if (userInfoStore.userInfo) {
+      userInfoStore.userInfo.avatar = imgUrl.value;
+    }
+    ElNotification({
+      title: 'Success',
+      message: '头像修改成功',
+      type: 'success'
+    })
+  }catch (e){
+    ElNotification({
+      title: '上传失败',
+      message: '请重试',
+      type: 'error'
+    })
+  }
 }
 </script>
 
@@ -73,6 +102,8 @@ const updateAvatar = async ()=>{
       width: 278px;
       height: 278px;
       display: block;
+      border-radius: 50%;
+      object-fit: cover;
     }
 
     .el-upload {

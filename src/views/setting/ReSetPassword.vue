@@ -12,14 +12,15 @@ const formRef=ref()
 const userInfoStore = useUserInfoStore()
 
 const formData:IUserResetPasswordDTO=reactive({
-  email: userInfoStore.userInfo.email,
+  email: userInfoStore.userInfo?.email,
+  emilCode: "",
   isLogin: true,
   oldPassword:"",
   password:""
 })
 
 const checkRePassword = (rule, value, callback) => {
-  if(value === formData.currentPwd){
+  if(value === formData.oldPassword){
     callback(new Error('新的密码不能和旧的相同'))
   }else{
     callback()
@@ -27,11 +28,11 @@ const checkRePassword = (rule, value, callback) => {
 }
 
 const formRules=reactive({
-  currentPwd: [
+  oldPassword: [
     {required: true, message: '请输入密码', trigger: 'blur'},
     {validator: Verify.password, message: '密码只能是数字, 字母, 特殊字符6-18位', trigger: 'blur'}
   ],
-  updatePwd: [
+  password: [
     {required: true, message: '请输入密码', trigger: 'blur'},
     {validator: Verify.password, message: '密码只能是数字, 字母, 特殊字符6-18位', trigger: 'blur'},
     {validator: checkRePassword, message: '新的密码不能和旧的相同', trigger: 'blur'}
@@ -42,7 +43,7 @@ const reSetForm=()=>{
   formRef.value.resetFields()
 }
 const onSubmit=()=>{
-  formRef.value.validate(async (valid) => {
+  formRef.value.validate(async (valid:any) => {
     if(!valid){
       return
     }

@@ -72,6 +72,32 @@
       </div>
     </el-main>
     <el-footer class="main-footer">
+      <div class="file-list-button-footer">
+        <el-button type="warning" round style="padding: 8px 24px" @click="createFolder" v-if="params.categoryCode==='all' && selectRows.length===0">
+          <el-icon size="16"><FolderAdd /></el-icon>
+          新建文件夹
+        </el-button>
+        <el-button type="success" round style="padding: 8px 24px" @click="uploadFile" v-if="selectRows.length===0">
+          <el-icon size="16"><Upload /></el-icon>
+          上传
+        </el-button>
+        <el-button type="success" round style="padding: 8px 24px" @click="downloadFile" v-if="selectRows.length>=1">
+          <el-icon size="16"><Download /></el-icon>
+          下载
+        </el-button>
+        <el-button type="success" round style="padding: 8px 24px" @click="renameFile" v-if="selectRows.length==1">
+          <el-icon size="16"><Edit /></el-icon>
+          重命名
+        </el-button>
+        <el-button type="danger" round style="padding: 8px 24px" @click="deleteFile" v-if="selectRows.length>=1">
+          <el-icon size="16"><Delete /></el-icon>
+          删除
+        </el-button>
+        <el-button type="info" round style="padding: 8px 24px" @click="shareFile" v-if="selectRows.length==1">
+          <el-icon size="16"><Share /></el-icon>
+          分享
+        </el-button>
+      </div>
       <div class="file-list-footer">
         <el-pagination
             v-model:current-page="currentPage"
@@ -89,11 +115,13 @@
 </template>
 
 <script lang="ts" setup>
-import {reactive, ref} from 'vue'
+import {reactive, ref,computed} from 'vue'
 import {onBeforeRouteUpdate} from 'vue-router'
 import {size2Str} from "@/utils/size2Str.ts";
-import {getFileListService} from "@/api/FileApi.ts";
+import {createFolderService, deleteFileService, getFileListService, renameFileService} from "@/api/FileApi.ts";
 import type {File} from "@/type/File/File.ts"
+import {Delete, Download, Edit, FolderAdd, Upload} from "@element-plus/icons-vue";
+import {generateShareCodeService} from "@/api/ShareApi.ts";
 
 const fileListData = ref<File[]>([{
   "fileId": "Cwo2QlSPNk",
@@ -112,19 +140,25 @@ const handleSizeChange = (val: number) => {
 };
 const handleCurrentChange = (val: number) => {
   console.log(`当前页: ${val}`);
+  params.pageNum = val
+  loadFileListData()
 };
 const params = reactive({
   pageNum: 1,
-  pageSize: 7,
+  pageSize: 9,
   categoryCode: "all",
   fileNameFuzzy: "",
   filePid: ""
 })
 
-const selectRows = ref([])
-const handleSelectionChange = ()=>{
-  console.log('选择文件:'+selectRows.value)
+const selectRows = ref<File[]>([])
+const selectedFileIds = computed(() => {
+  return selectRows.value.map(file => file.fileId).join(',');
+})
+const handleSelectionChange = (val:File[])=>{
+  selectRows.value = val
 }
+
 // 监听路由变化
 onBeforeRouteUpdate((to, from) => {
   params.categoryCode = String(to.params.categoryCode);
@@ -146,7 +180,7 @@ const cleanFileNameSearch=()=>{
 const openFile=(row:File)=>{
   console.log('打开文件')
 }
-const fileTypeMap = ref( {
+const fileTypeMap = ref<any>( {
   0: { desc: '目录', icon: 'folder' },
   1: { desc: '视频', icon: 'video' },
   2: { desc: '音频', icon: 'music' },
@@ -159,10 +193,12 @@ const fileTypeMap = ref( {
   9: { desc: '压缩包', icon: 'zip' },
   10: { desc: '其他文件', icon: 'others' }
 })
+
 const getImage=(row:File)=>{
   let icon = fileTypeMap.value[row.fileType]?.icon || 'unknown'
   return new URL(`/src/assets/icon-image/${icon}.png`, import.meta.url).href
 }
+
 const loadFileListData=async ()=>{
   console.log('获取文件列表')
   console.log(params)
@@ -170,6 +206,173 @@ const loadFileListData=async ()=>{
   fileListData.value = res.data.items
   fileTotal.value = res.data.total
 }
+
+//按钮逻辑部分------------
+const createFolder = () => {
+  console.log('新建文件夹');
+  ElMessageBox.prompt(
+      '请输入文件夹名',
+      '文件夹名',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        inputPattern: /^[^\\*?"<>|]+$/,
+        inputErrorMessage: '文件名不能包含以下字符：\\ * ? " < > | 且不能为空',
+        inputValue: ""
+      }
+  ).then(async ({ value }) => {
+    console.log("文件夹名:"+value)
+    //TODO Pid逻辑
+    let data ={
+      filePid: 0,
+      fileName: value
+    }
+    await createFolderService(data).then(()=>{
+      ElMessage({
+        type: 'success',
+        message: '创建文件夹成功!'
+      })
+      loadFileListData()
+    }).catch(() => {
+      ElMessage({
+        type: 'error',
+        message: '创建文件夹失败!'
+      })
+    })
+  })
+
+};
+
+const uploadFile = () => {
+  console.log('上传文件');
+};
+
+const downloadFile = () => {
+  console.log('下载文件');
+  if (selectRows.value.length === 0) {
+    notificationForSelect()
+    return
+  }
+};
+
+const renameFile = () => {
+  console.log('重命名文件');
+  if (selectRows.value.length === 0) {
+    notificationForSelect()
+    return
+  }
+  if (selectRows.value.length != 1) {
+    return
+  }
+  ElMessageBox.prompt(
+      '请输入重命名',
+      '重命名',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        inputPattern: /^[^\\*?"<>|]+$/,
+        inputErrorMessage: '文件名不能包含以下字符：\\ * ? " < > |',
+        inputValue: selectRows.value[0].fileName
+      }
+  ).then(async ({ value }) => {
+    console.log("重命名:"+value)
+    let data ={
+      fileId: selectRows.value[0].fileId,
+      newName: value
+    }
+    await renameFileService(data).then(()=>{
+      ElMessage({
+        type: 'success',
+        message: '重命名成功!'
+      })
+      loadFileListData()
+    }).catch(() => {
+      ElMessage({
+        type: 'error',
+        message: '重命名失败!'
+      })
+    })
+  })
+
+};
+
+const deleteFile = () => {
+  console.log('删除文件');
+  if (selectRows.value.length === 0) {
+    notificationForSelect()
+    return
+  }
+  ElMessageBox.confirm(
+      '此操作将永久删除该文件, 是否继续?',
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+  ).then(async () => {
+    await deleteFileService(selectedFileIds.value)
+    ElMessage({
+      type: 'success',
+      message: '删除成功!'
+    })
+  }).catch(() => {
+    ElMessage({
+      type: 'info',
+      message: '已取消删除'
+    })
+  })
+};
+
+const shareFile = () => {
+  console.log('分享文件');
+  if (selectRows.value.length === 0) {
+    notificationForSelect()
+    return
+  }
+  if(selectRows.value.length != 1){
+    return
+  }
+  ElMessageBox.confirm(
+      '是否要分享该文件?',
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+  ).then(async () => {
+    let fileId = selectRows.value[0].fileId
+    let res = await generateShareCodeService(fileId)
+    ElMessage({
+      type: 'success',
+      message: '分享成功!'
+    })
+    await ElMessageBox.alert(
+        '分享码：' + res.data,
+        '分享码',
+        {
+          confirmButtonText: '确定',
+          type: 'success'
+        }
+    )
+  }).catch(() => {
+    ElMessage({
+      type: 'info',
+      message: '已取消分享'
+    })
+  })
+
+};
+
+const notificationForSelect = () => {
+  ElNotification({
+    title: '提示',
+    message: '请选择要操作的文件',
+    type: 'warning'
+  })
+}
+
 loadFileListData()
 </script>
 
@@ -262,9 +465,6 @@ loadFileListData()
     padding-left: 8px;
     height: calc(100% - 40px);
   }
-  .file-list-footer {
-    height: 40px;
-  }
   .table-empty {
     height: 100%;
     display: flex;
@@ -287,6 +487,40 @@ loadFileListData()
 }
 
 .main-footer {
-  height: 30px
+  height: 40px; /* 增大底部空间 */
+  padding: 10px 0; /* 增加内边距 */
 }
+
+.file-list-button-footer {
+  margin-left: 70px;
+  display: flex;
+  justify-content: flex-start; /* 将分页内容向左对齐 */
+  margin-top: 8px;
+}
+.file-list-footer {
+  display: flex;
+  justify-content: flex-end; /* 将分页内容向右对齐 */
+  margin-top: 8px;
+}
+
+.el-pagination {
+  font-size: 18px; /* 调整分页字体大小 */
+  .el-pager {
+    margin-right: 12px; /* 调整分页页码之间的间距 */
+  }
+
+  .el-button--primary {
+    background-color: #409EFF; /* 改变按钮颜色 */
+    border-color: #409EFF; /* 改变按钮边框颜色 */
+    color: white; /* 按钮文本颜色 */
+    border-radius: 16px; /* 更圆润的边角 */
+    padding: 5px 12px; /* 增加按钮内边距 */
+  }
+
+  .el-button--primary:hover {
+    background-color: #66b1ff; /* 改变按钮 hover 时的颜色 */
+    border-color: #66b1ff; /* 改变按钮 hover 时的边框颜色 */
+  }
+}
+
 </style>

@@ -17,7 +17,8 @@ export const API = {
     EMAIL_LOGIN_URL: '/emailLogin',
     SEND_EMAIL_CODE_URL: '/sendEmailCode',
     CHECK_CODE_URL: '/api/checkCode',
-    USER_INFO_URL: '/userInfo'
+    USER_INFO_URL: '/userInfo',
+    UPDATE_AVATAR_URL: '/updateAvatar'
 }
 
 export const userLoginService=(data:IUserLoginDTO):Promise<Result>=>{
@@ -43,4 +44,8 @@ export const userSendEmailCodeService = (data:EmailCodeForm):Promise<Result>=>{
     let params = qs.stringify(data)
     console.log(data)
     return Request.post(API.SEND_EMAIL_CODE_URL,params)
+}
+
+export const userUpdateAvatarService = (data:any):Promise<Result>=>{
+    return Request.put(API.UPDATE_AVATAR_URL,data)
 }

@@ -34,7 +34,7 @@ export interface IUserInfoDTO {
     nickname: string;
     email: string;
     avatar: string;
-    useSpace: number;
+    usedSpace: number;
     totalSpace: number;
 }
    

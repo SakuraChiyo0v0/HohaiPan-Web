@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {CaretBottom, Crop, EditPen, SwitchButton, User} from "@element-plus/icons-vue";
-import {ref,reactive} from "vue";
+import {ref,reactive,computed} from "vue";
 import defaultAvatar from "@/assets/defaultAvatar.png"
 import {useUserInfoStore} from "@/store/UserInfoStore.ts";
 import Logo from "@/components/Logo.vue";
@@ -58,7 +58,10 @@ const Menus:MenuItem[] = [
     {
       name: '分享记录',
       path: '/share/record'
-    }]
+    },{
+        name: '接收文件',
+        path: '/share/get'
+      }]
   },
   {
     name: '回收站',
@@ -89,6 +92,17 @@ const Menus:MenuItem[] = [
     }]
   }
 ]
+
+//空间容量的逻辑
+const percentage = computed(()=>{
+  // 使用 userInfoStore 获取数据，并确保值存在再进行计算
+  const usedSpace = userInfoStore.userInfo?.usedSpace || 0;
+  const totalSpace = userInfoStore.userInfo?.totalSpace || 1; // 确保 totalSpace 不为 0
+  return (usedSpace / totalSpace) * 100;
+})
+const getUsedSpace = ()=>{
+  //TODO 实现获取用户使用空间的逻辑
+}
 
 //菜单的跳转逻辑
 const currentItem = ref(Menus[0])
@@ -175,17 +189,17 @@ const handleCommand=(command:string)=>{
               <div :class="['iconfont','icon-'+subItem.icon]" v-if="subItem.icon"></div>
               <div class="text">{{ subItem.name }}</div>
             </div>
-<!--            <div class="space-info">-->
-<!--              <div class="percent">-->
-<!--                <el-progress :percentage="percentage" :show-text="false" color="#ffd821"></el-progress>-->
-<!--              </div>-->
-<!--              <div class="space-use">-->
-<!--                <div class="use">-->
-<!--                  {{ userInfoStore.userInfo?.useSpace }} / {{ userInfoStore.userInfo?.totalSpace }}-->
-<!--                </div>-->
-<!--                <el-icon class="refresh" :size="14" @click="getUseSpace"></el-icon>-->
-<!--              </div>-->
-<!--            </div>-->
+            <div class="space-info">
+              <div class="percent">
+                <el-progress :percentage="percentage" :show-text="false" color="#ffd821"></el-progress>
+              </div>
+              <div class="space-use">
+                <div class="use">
+                  {{ userInfoStore.userInfo?.usedSpace }} / {{ userInfoStore.userInfo?.totalSpace }}
+                </div>
+                <el-icon class="refresh" :size="14" @click="getUsedSpace"></el-icon>
+              </div>
+            </div>
           </div>
         </el-aside>
         <el-container>
@@ -366,7 +380,7 @@ const handleCommand=(command:string)=>{
   }
 
   .foot {
-    height: 40px;
+    height: 20px;
   }
 }
 </style>

@@ -1,7 +1,7 @@
 export const routes = [
     {
         path: '/',
-        redirect: '/file'
+        redirect: '/login'
     },
     {
         path: '/login',
@@ -26,6 +26,9 @@ export const routes = [
                 }, {
                     path: '/share/record',
                     component: () => import('@/views/share/ShareRecord.vue')
+                },{
+                    path: '/share/get',
+                    component: () => import('@/views/share/ShareGet.vue')
                 }]
             },
             {

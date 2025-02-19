@@ -21,6 +21,7 @@ export default defineConfig({
     plugins: [
         vue(),
         vueDevTools(),
+
         //element按需导入
         AutoImport({
             resolvers: [ElementPlusResolver()],
